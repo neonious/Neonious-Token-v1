@@ -1,0 +1,17 @@
+{
+  "name": "Neonious-Token-v1",
+  "version": "1.0.0",
+  "description": "Neonious Token (NEON) as described in the Neonious Whitepaper",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Neonious GmbH",
+  "license": "MIT",
+  "dependencies": {
+    "@openzeppelin/contracts": "3.4.0",
+    "eth-sig-util": "^3.0.1",
+    "solc": "0.6.12",
+    "web3": "^1.3.5"
+  }
+}
