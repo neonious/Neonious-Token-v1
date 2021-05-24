@@ -2,7 +2,7 @@
 
 The Neonious Token (NEON) as described in the Neonious Whitepaper v4.
 
-Link to whitepaper: https://www.neonious.org/static/NEON-Token-Whitepaper-v4.pdf
+Link to whitepaper: https://www.neonious.org/static/Neonious-Token-Whitepaper-v4.pdf
 
 
 ## Deployed Token Address
