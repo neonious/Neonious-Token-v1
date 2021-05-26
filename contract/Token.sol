@@ -274,6 +274,35 @@ contract Token is IERC20Internal, EIP3009 {
         );
     }
 
+    // From ERC20Burnable.sol, OpenZeppelin 3.3
+
+    /**
+     * @dev Destroys `amount` tokens from the caller.
+     *
+     * See {ERC20-_burn}.
+     */
+    function burn(uint256 amount) public virtual {
+        _burn(msg.sender, amount);
+    }
+
+    /**
+     * @dev Destroys `amount` tokens from `account`, deducting from the caller's
+     * allowance.
+     *
+     * See {ERC20-_burn} and {ERC20-allowance}.
+     *
+     * Requirements:
+     *
+     * - the caller must have allowance for ``accounts``'s tokens of at least
+     * `amount`.
+     */
+    function burnFrom(address account, uint256 amount) public virtual {
+        uint256 decreasedAllowance = _allowances[account][msg.sender].sub(amount, "ERC20: burn amount exceeds allowance");
+
+        _approve(account, msg.sender, decreasedAllowance);
+        _burn(account, amount);
+    }
+
     /*
      * ADDITIONS BY NEONIOUS. SEE NEONIOUS TOKEN WHITEPAPER FOR DETAILS
      */
@@ -295,18 +324,21 @@ contract Token is IERC20Internal, EIP3009 {
 
     receive() external payable {}
 
+    // Transfer many
+    function transferToMany(address[] memory tos, uint256[] memory amounts) public {
+        for(uint256 i = 0; i < tos.length; i++)
+            _transfer(msg.sender, tos[i], amounts[i]);
+    }
+
     // Attach mining contract
     function setMiningContract(address miningContract) public {
         require(msg.sender == _owner, "May only called by owner of smart contract");
         _miningContract = miningContract;
     }
 
-    function rewardMining(address payable[] memory tos, uint256[] memory amounts) public {
+    function rewardMining(address[] memory tos, uint256[] memory amounts) public {
         require(msg.sender == _miningContract && msg.sender != address(0), "May only called by mining contract");
-        for(uint256 i = 0; i < tos.length; i++) {
-            _balances[tos[i]] = _balances[tos[i]].add(amounts[i]);
-            _totalSupply = _totalSupply.add(amounts[i]);
-            emit Transfer(address(0), tos[i], amounts[i]);
-        }
+        for(uint256 i = 0; i < tos.length; i++)
+            _mint(tos[i], amounts[i]);
     }
 }

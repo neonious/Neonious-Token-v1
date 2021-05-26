@@ -19,10 +19,10 @@ let NEON_TESTTOKEN_CONTRACT = '0x1008940A4Da0A69B408B1Bc67e24323C3EaAeC96';
 async function run() {
         console.log("Node ready:", await funcs.isNodeReady(web3));
 
-	console.log("Deploy gas required: ", await funcs.deployToken(web3, INITIAL_ETH_ACCOUNT.privateKey, true, "Neonious Token", "1", "NEON", '120000000000000000000000000', 18));
+	console.log("Deploy gas required: ", await funcs.deployToken(web3, INITIAL_ETH_ACCOUNT.privateKey, true, "Neonious Token", "1", "ALZ", '120000000000000000000000000', 18));
 
 	if(!NEON_TESTTOKEN_CONTRACT) {
-		NEON_TESTTOKEN_CONTRACT = await funcs.deployToken(web3, INITIAL_ETH_ACCOUNT.privateKey, false, "Neonious Token", "1", "NEON", '125000000000000000000000000', 18);
+		NEON_TESTTOKEN_CONTRACT = await funcs.deployToken(web3, INITIAL_ETH_ACCOUNT.privateKey, false, "Neonious Token", "1", "ALZ", '125000000000000000000000000', 18);
 		console.log("Token deployed at:", NEON_TESTTOKEN_CONTRACT);
 	}
 
