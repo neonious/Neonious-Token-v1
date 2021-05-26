@@ -7,9 +7,9 @@ Link to whitepaper: https://www.neonious.org/static/Neonious-Token-Whitepaper-v4
 
 ## Deployed Token Address
 
-The token is deployed at 0xEEB004B8e479b59E7159e667846569e2FAFf57DB
+The token is deployed at 0xDa48C42517AFfB3BF3FC13CE26561092e1a61A80
 
-View in Etherscan: https://etherscan.io/address/0xEEB004B8e479b59E7159e667846569e2FAFf57DB
+View in Etherscan: https://etherscan.io/address/0xDa48C42517AFfB3BF3FC13CE26561092e1a61A80
 
 
 ## Testing
