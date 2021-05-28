@@ -163,9 +163,34 @@ const ERC20_ABI = [
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
-	}];
+	},
+	{
+            "inputs": [
+              {
+                "internalType": "address[]",
+                "name": "tos",
+                "type": "address[]"
+              },
+              {
+                "internalType": "uint256[]",
+                "name": "amounts",
+                "type": "uint256[]"
+              }
+            ],
+            "name": "transferToMany",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          }
+];
 
 let erc20Contracts = {}, accounts = {};
+
+exports.CONTRACTS = {
+	'MDSIM': '0xDa48C42517AFfB3BF3FC13CE26561092e1a61A80',
+	'USDC': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+	'USDT': '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+};
 
 exports.isNodeReady = async function isNodeReady(web3) {
 	return !await web3.eth.isSyncing();
@@ -287,6 +312,15 @@ exports.transfer = async function transfer(web3, privateKey, tokenAddr, to, amou
 	}
 }
 
+exports.transferToManyMDSIM = async function transferToManyMDSIM(web3, privateKey, tokenAddr, tos, amounts, gasPrice, onlyEstimate) {
+	if(tos.length != amounts.length)
+		throw new Error('array lengths do not match');
+
+	erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
+	return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.transferToMany(tos, amounts), tokenAddr, gasPrice, onlyEstimate);
+}
+
+
 exports.getDecimalFactor = async function getDecimalFactor(web3, tokenAddr) {
 	if (tokenAddr) {
 		if (!erc20Contracts[tokenAddr])
@@ -347,16 +381,19 @@ exports.getHistory = async function getHistory(web3, tokenAddr, addresses, fromB
 		if (!erc20Contracts[tokenAddr])
 			erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
 
-		const raw = await erc20Contracts[tokenAddr].getPastEvents("Transfer", { fromBlock: fromBlock ? fromBlock : 0 });
-		for (let i = 0; i < raw.length; i++)
-			if (raw[i].address == tokenAddr && (allAddresses || addressObj[raw[i].returnValues[0]] || addressObj[raw[i].returnValues[1]]))
-				res.transfers.push({
-					transaction: raw[i].transactionHash,
-					from: raw[i].returnValues[0],
-					to: raw[i].returnValues[1],
-					amount: human ? raw[i].returnValues[2] * fac : raw[i].returnValues[2],
-					timestamp: (await web3.eth.getBlock(raw[i].blockNumber)).timestamp
-				});
+		// To be safe, we do block to block, because otherwise the JSON gets too big for Web3
+		for (let b = fromBlock | 0; b < res.nextBlock; b++) {
+			const raw = await erc20Contracts[tokenAddr].getPastEvents("Transfer", { fromBlock: b, toBlock: b });
+			for (let i = 0; i < raw.length; i++)
+				if (raw[i].address == tokenAddr && (allAddresses || addressObj[raw[i].returnValues[0]] || addressObj[raw[i].returnValues[1]]))
+					res.transfers.push({
+						transaction: raw[i].transactionHash,
+						from: raw[i].returnValues[0],
+						to: raw[i].returnValues[1],
+						amount: human ? raw[i].returnValues[2] * fac : raw[i].returnValues[2],
+						timestamp: (await web3.eth.getBlock(raw[i].blockNumber)).timestamp
+					});
+		}
 	} else {
 		for (let i = fromBlock | 0; i < res.nextBlock; i++) {
 			const block = await web3.eth.getBlock(i, true);
@@ -402,11 +439,11 @@ exports.sendPrivateKey = async function sendPrivateKey(web3, privateKey, query, 
 	);
 }
 
-exports.deployToken = async function deployToken(web3, privateKey, onlyEstimate, name, version, symbol, initialSupply, decimals) {
+exports.deployTestToken = async function deploySimpleToken(web3, privateKey, name, symbol, initialSupply, decimals) {
 	const code = JSON.parse(await fs.promises.readFile(path.join(__dirname, 'contract.json'), 'utf8'));
 	const contract = code.contracts['Token.sol'].Token;
 
-	return await exports.deployContract(web3, privateKey, contract, undefined, onlyEstimate, name, version, symbol, decimals, initialSupply);
+	return await exports.deployContract(web3, privateKey, contract, undefined, false, name, '1', symbol, decimals, initialSupply);
 }
 
 exports.deployContract = async function deployContract(web3, privateKey, contract, gasPrice, onlyEstimate, ...args) {
