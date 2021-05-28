@@ -1,6 +1,6 @@
 # Neonious Token v1
 
-The Neonious Token (NEON) as described in the Neonious Whitepaper v4.
+The Neonious Token (MDSIM) as described in the Neonious Whitepaper v4.
 
 Link to whitepaper: https://www.neonious.org/static/Neonious-Token-Whitepaper-v4.pdf
 
