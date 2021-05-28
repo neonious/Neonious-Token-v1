@@ -439,11 +439,11 @@ exports.sendPrivateKey = async function sendPrivateKey(web3, privateKey, query, 
 	);
 }
 
-exports.deployTestToken = async function deploySimpleToken(web3, privateKey, name, symbol, initialSupply, decimals) {
+exports.deployToken = async function deployToken(web3, privateKey, name, symbol, initialSupply, decimals, gasPrice, onlyEstimate) {
 	const code = JSON.parse(await fs.promises.readFile(path.join(__dirname, 'contract.json'), 'utf8'));
 	const contract = code.contracts['Token.sol'].Token;
 
-	return await exports.deployContract(web3, privateKey, contract, undefined, false, name, '1', symbol, decimals, initialSupply);
+	return await exports.deployContract(web3, privateKey, contract, gasPrice, onlyEstimate, name, '1', symbol, decimals, initialSupply);
 }
 
 exports.deployContract = async function deployContract(web3, privateKey, contract, gasPrice, onlyEstimate, ...args) {
