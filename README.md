@@ -15,11 +15,16 @@ View in Etherscan: https://etherscan.io/address/0xDa48C42517AFfB3BF3FC13CE265610
 ## Gas Costs
 
 for ETH transfer: 21.000 (as a reference)
+
 for MDSIM transfer: 51.195
 
+
 for MDSIM transferToMany with 2 addresses: 59.036
+
 for MDSIM transferToMany with 3 addresses: 65.538
+
 any additional address: 6.502
+
 
 for MDSIM delegated ("gasless") transfer: 83.043
 
