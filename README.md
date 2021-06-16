@@ -11,7 +11,7 @@ In lib.js you can find a Node.JS API for
 
 - deployment of Neonious Token test contract
 - transfer of ETH + ERC20
-- delegated ("gasless") transfer via EIP-3009 as supported by MDSIM or USD
+- delegated ("gasless") transfer via EIP-3009 as supported by MDSIM or USDC
 - transfer to many as supported by MDSIM (cheaper gas / transfer)
 - and misc functions
 
