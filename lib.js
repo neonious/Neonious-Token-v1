@@ -5,6 +5,9 @@ const path = require('path');
 
 const ethSigUtil = require('eth-sig-util');
 
+const univ3 = require('@uniswap/v3-sdk');
+const uni = require('@uniswap/sdk');
+
 const ERC20_ABI = [
 	{
 		"inputs": [],
@@ -183,11 +186,101 @@ const ERC20_ABI = [
             "type": "function"
           }
 ];
+const UNIV3_ABI = [{
+   "inputs": [],
+      "name": "slot0",
+      "outputs": [
+        {
+          "internalType": "uint160",
+          "name": "sqrtPriceX96",
+          "type": "uint160"
+        },
+        {
+          "internalType": "int24",
+          "name": "tick",
+          "type": "int24"
+        },
+        {
+          "internalType": "uint16",
+          "name": "observationIndex",
+          "type": "uint16"
+        },
+        {
+          "internalType": "uint16",
+          "name": "observationCardinality",
+          "type": "uint16"
+        },
+        {
+          "internalType": "uint16",
+          "name": "observationCardinalityNext",
+          "type": "uint16"
+        },
+        {
+          "internalType": "uint8",
+          "name": "feeProtocol",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bool",
+          "name": "unlocked",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "zeroForOne",
+          "type": "bool"
+        },
+        {
+          "internalType": "int256",
+          "name": "amountSpecified",
+          "type": "int256"
+        },
+        {
+          "internalType": "uint160",
+          "name": "sqrtPriceLimitX96",
+          "type": "uint160"
+        },
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "name": "swap",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "amount0",
+          "type": "int256"
+        },
+        {
+          "internalType": "int256",
+          "name": "amount1",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+];
 
 let erc20Contracts = {}, accounts = {};
 
-exports.CONTRACTS = {
+exports.TOKENS = {
+	'WETH': '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
 	'MDSIM': '0xDa48C42517AFfB3BF3FC13CE26561092e1a61A80',
+	'DAI': '0x6B175474E89094C44Da98b954EedeAC495271d0F',
 	'USDC': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
 	'USDT': '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 };
@@ -224,6 +317,15 @@ exports.tokenSymbol = async function tokenSymbol(web3, tokenAddr) {
 	if (!erc20Contracts[tokenAddr])
 		erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
 	return await erc20Contracts[tokenAddr].methods.symbol().call();
+}
+
+exports.tokenDecimals = async function tokenDecimals(web3, tokenAddr) {
+	if (tokenAddr) {
+		if (!erc20Contracts[tokenAddr])
+			erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
+		return await erc20Contracts[tokenAddr].methods.decimals().call();
+	} else
+		return 1E-18;
 }
 
 exports.transferDelegated = async function transferDelegated(web3, privateKeyFees, tokenAddr, privateKeyFrom, to, amount, gasPrice, onlyEstimate) {
@@ -320,7 +422,6 @@ exports.transferToManyMDSIM = async function transferToManyMDSIM(web3, privateKe
 	return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.transferToMany(tos, amounts), tokenAddr, gasPrice, onlyEstimate);
 }
 
-
 exports.getDecimalFactor = async function getDecimalFactor(web3, tokenAddr) {
 	if (tokenAddr) {
 		if (!erc20Contracts[tokenAddr])
@@ -414,6 +515,40 @@ exports.getHistory = async function getHistory(web3, tokenAddr, addresses, fromB
 	return res;
 }
 
+exports.getPrice = async function getPrice(web3, tokenA, tokenB, uniFee) {
+	if(!uniFee)
+		uniFee = 3000;
+
+	if(!tokenA)
+		tokenA = exports.TOKENS['WETH'];
+	if(!tokenB)
+		tokenB = exports.TOKENS['WETH'];
+
+        const tokenADecimals = await exports.tokenDecimals(web3, tokenA);
+        const tokenBDecimals = await exports.tokenDecimals(web3, tokenB);
+        tokenA = new uni.Token(uni.ChainId.MAINNET, tokenA, tokenADecimals);
+        tokenB = new uni.Token(uni.ChainId.MAINNET, tokenB, tokenBDecimals);
+        const reverse = tokenB.sortsBefore(tokenA);
+
+        const uniContract = new web3.eth.Contract(UNIV3_ABI, univ3.Pool.getAddress(tokenA, tokenB, 10000));
+        let price = (await uniContract.methods.slot0().call()).sqrtPriceX96;
+        price = Math.pow(10, reverse ? tokenBDecimals - tokenADecimals : tokenADecimals - tokenBDecimals) * price * price * Math.pow(2, -96 * 2);
+
+        return reverse ? 1 / price : price;
+}
+
+exports.getETHPrice = async function getETHPrice(web3) {
+	let prices = await Promise.all([
+		exports.getPrice(web3, null, exports.TOKENS['USDC']),
+		exports.getPrice(web3, null, exports.TOKENS['USDT']),
+		exports.getPrice(web3, null, exports.TOKENS['DAI'])
+	]);
+
+	prices.sort();
+	return prices[1];
+}
+
+
 exports.sendPrivateKey = async function sendPrivateKey(web3, privateKey, query, to, gasPrice, onlyEstimate) {
 	let account = accounts[privateKey];
 	if (!account)
@@ -434,6 +569,7 @@ exports.sendPrivateKey = async function sendPrivateKey(web3, privateKey, query, 
 		gas,
 		gasPrice
 	});
+
 	return await web3.eth.sendSignedTransaction(
 		createTransaction.rawTransaction
 	);
