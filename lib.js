@@ -165,51 +165,51 @@ const ERC20_ABI = [
 		"type": "function"
 	},
 	{
-            "inputs": [
-              {
-                "internalType": "address[]",
-                "name": "tos",
-                "type": "address[]"
-              },
-              {
-                "internalType": "uint256[]",
-                "name": "amounts",
-                "type": "uint256[]"
-              }
-            ],
-            "name": "transferToMany",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-          },
-          {
-            "inputs": [
-              {
-                "internalType": "address",
-                "name": "spender",
-                "type": "address"
-              },
-              {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-              }
-            ],
-            "name": "approve",
-            "outputs": [
-              {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-              }
-            ],
-            "stateMutability": "nonpayable",
-            "type": "function"
-          }
+		"inputs": [
+			{
+				"internalType": "address[]",
+				"name": "tos",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			}
+		],
+		"name": "transferToMany",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "spender",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "approve",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
 ];
 
-let erc20Contracts = {}, accounts = {};
-let transactionCounts = {};
+let erc20Contracts = {}, erc20Decimals = {};
+let accounts = {}, transactionCounts = {};
 
 exports.TOKENS = {
 	'WETH': '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
@@ -255,9 +255,13 @@ exports.tokenSymbol = async function tokenSymbol(web3, tokenAddr) {
 
 exports.tokenDecimals = async function tokenDecimals(web3, tokenAddr) {
 	if (tokenAddr) {
+		const decimals = erc20Decimals[tokenAddr];	// tokenDecimals is used often
+		if(decimals === undefined)
+			return decimals;
+
 		if (!erc20Contracts[tokenAddr])
-			erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
-		return await erc20Contracts[tokenAddr].methods.decimals().call();
+			erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);		
+		return erc20Decimals[tokenAddr] = await erc20Contracts[tokenAddr].methods.decimals().call();
 	} else
 		return 1E-18;
 }
@@ -315,53 +319,88 @@ exports.transferDelegated = async function transferDelegated(web3, privateKeyFee
 		erc20Contracts[tokenAddr].methods.transferWithAuthorization(accountFrom.address, to, amount, 0, data.message.validBefore, data.message.nonce, v, r, s), tokenAddr, gasFactor, onlyEstimate);
 }
 
-exports.transfer = async function transfer(web3, privateKey, tokenAddr, to, amount, gasFactor, onlyEstimate) {
+exports.transfer = async function transfer(web3, privateKey, tokenAddr, to, amount, subtractFees, gasFactor, onlyEstimate) {
 	if (tokenAddr) {
 		if (!erc20Contracts[tokenAddr])
 			erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
 
+		if(subtractFees)
+			throw new Error('not implemented yet');
+
 		return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.transfer(to, amount), tokenAddr, gasFactor, onlyEstimate);
 	} else {
+		if (onlyEstimate)
+			return 21000;
+
 		const account = await web3.eth.accounts.privateKeyToAccount(privateKey);
 
-		if (onlyEstimate)
-			return await web3.eth.estimateGas({
+		let nonce = transactionCounts[account.address];
+		if (nonce === undefined)
+			nonce = await web3.eth.getTransactionCount(account.address, 'pending');
+		transactionCounts[account.address] = nonce + 1;
+
+		gasPrice = '1000000000';
+		if (!gasFactor)
+			gasFactor = 1;
+
+		while (true) {
+			while (true) {
+				const newPrice = await web3.eth.getGasPrice();
+				newPrice = (new web3.utils.BN(newPrice)).mul(new web3.utils.BN(Math.round(gasFactor * 1000))).toString() * 0.001;
+
+				if (gasPrice.length > newPrice.length || (gasPrice.length == newPrice.length && gasPrice >= newPrice))
+					gasPrice = (new web3.utils.BN(gasPrice)).add(new web3.utils.BN('10000000000')).toString();
+				else
+					gasPrice = newPrice;
+				if ((new web3.utils.BN(gasPrice)).gte(new web3.utils.BN('500000000000')))
+					throw new Error('above 500 Gwei');
+
+				break;
+			}
+
+			let tryAmount;
+			if (subtractFees) {
+				tryAmount = (new web3.utils.BN(amount)).sub((new web3.utils.BN(21000)).mult(new web3.utils.BN(gasPrice)));
+				if (tryAmount == '0' || tryAmount[0] == '-')
+					return;			// nothing to transfer
+			} else
+				tryAmount = amount;
+
+			const createTransaction = await account.signTransaction({
 				from: account.address,
 				to,
-				value: amount
+				value: tryAmount,
+				gas: 21000,
+				gasPrice,
+				nonce
 			});
 
-		const createTransaction = await account.signTransaction({
-			from: account.address,
-			to,
-			value: amount,
-			gas: await web3.eth.estimateGas({
-				from: account.address,
-				to,
-				value: amount
-			}) * 2,
-			gasPrice
-		});
-		await web3.eth.sendSignedTransaction(
-			createTransaction.rawTransaction
-		);
+			try {
+				return await web3.eth.sendSignedTransaction(
+					createTransaction.rawTransaction
+				);
+			} catch (e) {
+				if (e.message && e.message.indexOf('not mined within') < 0)
+					throw e;
+			}
+		}
 	}
 }
 
-exports.transferToManyMDSIM = async function transferToManyMDSIM(web3, privateKey, tokenAddr, tos, amounts, gasPrice, onlyEstimate) {
-	if(tos.length != amounts.length)
+exports.transferToManyMDSIM = async function transferToManyMDSIM(web3, privateKey, tokenAddr, tos, amounts, gasFactor, onlyEstimate) {
+	if (tos.length != amounts.length)
 		throw new Error('array lengths do not match');
 
 	erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
-	return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.transferToMany(tos, amounts), tokenAddr, gasPrice, onlyEstimate);
+	return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.transferToMany(tos, amounts), tokenAddr, gasFactor, onlyEstimate);
 }
 
-exports.approve = async function approve(web3, privateKey, tokenAddr, byAddress, limit, gasPrice, onlyEstimate) {
-	if(limit === undefined)
+exports.approve = async function approve(web3, privateKey, tokenAddr, byAddress, limit, gasFactor, onlyEstimate) {
+	if (limit === undefined)
 		limit = (new web3.utils.BN(2)).pow(new web3.utils.BN(256)).sub(new web3.utils.BN(1)).toString();
 
 	erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
-	return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.approve(byAddress, limit), tokenAddr, gasPrice, onlyEstimate);
+	return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.approve(byAddress, limit), tokenAddr, gasFactor, onlyEstimate);
 }
 
 exports.getDecimalFactor = async function getDecimalFactor(web3, tokenAddr) {
@@ -457,44 +496,58 @@ exports.getHistory = async function getHistory(web3, tokenAddr, addresses, fromB
 	return res;
 }
 
-exports.sendPrivateKey = async function sendPrivateKey(web3, privateKey, query, to, gasPrice, onlyEstimate) {
+exports.sendPrivateKey = async function sendPrivateKey(web3, privateKey, query, to, gasFactor, onlyEstimate) {
 	let account = accounts[privateKey];
 	if (!account)
 		account = accounts[privateKey] = await web3.eth.accounts.privateKeyToAccount(privateKey);
 
-	let gas = await query.estimateGas({ from: account.address });
-	if (onlyEstimate)
-		return gas;
+	if (onlyEstimate) {
+		if (!query.estimateGas)
+			query = await query('1000000000');
+		return await query.estimateGas({ from: account.address, to });
+	}
 
 	gas *= 2;
 	if (gas > 7000000)
 		gas = 7000000;
 
 	let nonce = transactionCounts[account.address];
-	if(nonce === undefined)
+	if (nonce === undefined)
 		nonce = await web3.eth.getTransactionCount(account.address, 'pending');
 	transactionCounts[account.address] = nonce + 1;
 
-	// TODO: we ignore gasPrice right now. Make it gasPriceFactor
-	gasPrice = '1000000000';
-	while(true) {
-		while(true) {
-			const newPrice = await web3.eth.getGasPrice();
+	let gasPrice = '1000000000';
+	if (!gasFactor)
+		gasFactor = 1;
 
-			if(gasPrice.length > newPrice.length || (gasPrice.length == newPrice.length && gasPrice >= newPrice))
+	while (true) {
+		while (true) {
+			const newPrice = await web3.eth.getGasPrice();
+			newPrice = (new web3.utils.BN(newPrice)).mul(new web3.utils.BN(Math.round(gasFactor * 1000))).toString() * 0.001;
+
+			if (gasPrice.length > newPrice.length || (gasPrice.length == newPrice.length && gasPrice >= newPrice))
 				gasPrice = (new web3.utils.BN(gasPrice)).add(new web3.utils.BN('10000000000')).toString();
 			else
 				gasPrice = newPrice;
-			if(new web3.utils.BN(gasPrice).gte(new web3.utils.BN('500000000000')))
+			if (new web3.utils.BN(gasPrice).gte(new web3.utils.BN('500000000000')))
 				throw new Error('above 500 Gwei');
 
 			break;
 		}
 
+		let queryTry = query.estimateGas ? query : await query(gasPrice);
+		if (!queryTry)
+			return;
+
+		let gas = await queryTry.estimateGas({ from: account.address });
+		gas *= 2;
+		if (gas > 7000000)
+			gas = 7000000;
+
 		const createTransaction = await account.signTransaction({
 			from: account.address,
 			to,
-			data: query.encodeABI(),
+			data: queryTry.encodeABI(),
 			gas,
 			gasPrice,
 			nonce
@@ -504,27 +557,27 @@ exports.sendPrivateKey = async function sendPrivateKey(web3, privateKey, query, 
 			return await web3.eth.sendSignedTransaction(
 				createTransaction.rawTransaction
 			);
-		} catch(e) {
-			if(e.message && e.message.indexOf('not mined within') < 0)
+		} catch (e) {
+			if (e.message && e.message.indexOf('not mined within') < 0)
 				throw e;
 		}
 	}
 }
 
-exports.deployToken = async function deployToken(web3, privateKey, name, symbol, initialSupply, decimals, gasPrice, onlyEstimate) {
+exports.deployToken = async function deployToken(web3, privateKey, name, symbol, initialSupply, decimals, gasFactor, onlyEstimate) {
 	const code = JSON.parse(await fs.promises.readFile(path.join(__dirname, 'contract.json'), 'utf8'));
 	const contract = code.contracts['Token.sol'].Token;
 
-	return await exports.deployContract(web3, privateKey, contract, gasPrice, onlyEstimate, name, '1', symbol, decimals, initialSupply);
+	return await exports.deployContract(web3, privateKey, contract, gasFactor, onlyEstimate, name, '1', symbol, decimals, initialSupply);
 }
 
-exports.deployContract = async function deployContract(web3, privateKey, contract, gasPrice, onlyEstimate, ...args) {
+exports.deployContract = async function deployContract(web3, privateKey, contract, gasFactor, onlyEstimate, ...args) {
 	const contractObj = new web3.eth.Contract(contract.abi);
 	const contractTx = contractObj.deploy({
 		data: contract.evm.bytecode.object,
 		arguments: args
 	});
 
-	const receipt = await exports.sendPrivateKey(web3, privateKey, contractTx, undefined, gasPrice, onlyEstimate);
+	const receipt = await exports.sendPrivateKey(web3, privateKey, contractTx, undefined, gasFactor, onlyEstimate);
 	return onlyEstimate ? receipt : receipt.contractAddress;
 }
