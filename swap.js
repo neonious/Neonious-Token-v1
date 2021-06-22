@@ -319,9 +319,10 @@ exports.getETHPrice = async function getETHPrice(web3) {
 
 exports.setupApproval = async function setupApproval(web3, privateKey, tokenAddr, gasPrice, onlyEstimate) {
 	if(!tokenAddr)
-		continue;		// no need to setup approval for ETH
+		return;		// no need to setup approval for ETH
 
 	await lib.approve(web3, privateKey, tokenAddr, SWAPROUTER_ADDRESS, undefined, gasPrice, onlyEstimate);
 }
 
 exports.transferWithSwap = async function transferWithSwap(web3, privateKey, tokenAddr, to, amount, tokenAddrOut, gasPrice, onlyEstimate) {
+}
