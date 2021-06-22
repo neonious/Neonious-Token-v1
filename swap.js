@@ -330,6 +330,8 @@ exports.transferWithSwap = async function transferWithSwap(web3, privateKey, tok
     tokenAddr = lib.TOKENS['WETH'];
     directETH = true;
   }
+  if(!to)
+    to = await lib.getPrivateKeyAddress(web3, privateKey);
   if (!tokenAddrOut)
     tokenAddrOut = lib.TOKENS['WETH'];
   if (!uniFee)
@@ -349,19 +351,16 @@ exports.transferWithSwap = async function transferWithSwap(web3, privateKey, tok
 
   return await lib.sendPrivateKey(web3, privateKey, async (gasPrice) => {
     let tryAmount, tryAmountWithUni;
-    if (subtractFees) {
+    if (subtractFees)
       tryAmount = (new web3.utils.BN(amount)).sub((new web3.utils.BN(gas)).mul(new web3.utils.BN(gasPrice))).toString();
-
-    } else
+    else
       tryAmount = amount;
-    tryAmountWithUni = (new web3.utils.BN(tryAmount)).mul(new web3.utils.BN(100000)).div(new web3.utils.BN(100000 + uniFee)).toString();
-//    tryAmount = (new web3.utils.BN(tryAmount)).add(new web3.utils.BN(100000000)).toString();
-      if (tryAmountWithUni == '0' || tryAmountWithUni[0] == '-')
+      if (tryAmount == '0' || tryAmount[0] == '-')
         return;
 
-    amountOutMin = (new web3.utils.BN(await exports.getSellPrice(web3, amount, tokenAddr, tokenAddrOut, uniFee))).mul(new web3.utils.BN(SLIPPAGE)).div(new web3.utils.BN(1000)).toString();
+    amountOutMin = (new web3.utils.BN(await exports.getSellPrice(web3, tryAmount, tokenAddr, tokenAddrOut, uniFee))).mul(new web3.utils.BN(SLIPPAGE)).div(new web3.utils.BN(1000)).toString();
     return [swapRouterContract.methods.exactInputSingle(
-      [tokenAddr, tokenAddrOut, uniFee, to, ((new Date().getTime() * 0.001) + 3600) | 0, tryAmountWithUni, amountOutMin, 0]), directETH ? tryAmount : 0];
+      [tokenAddr, tokenAddrOut, uniFee, to, ((new Date().getTime() * 0.001) + 3600) | 0, tryAmount, amountOutMin, 0]), directETH ? tryAmount : 0];
   }, SWAPROUTER_ADDRESS, directETH ? amount : 0, gasFactor, onlyEstimate);
 }
 

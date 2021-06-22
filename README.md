@@ -15,6 +15,12 @@ In lib.js you can find a Node.JS API for
 - transfer to many as supported by MDSIM (cheaper gas / transfer)
 - and misc functions
 
+In swap.js you can find a Node.JS API for
+
+- getting the current ETH/USD price based on median of USDC/USDT/DAI
+- getting a Uniswap v3 pair price, in average and for selling/buying tokens
+- swapping / transfering with swap
+
 Also includes full unit test for transfer functions at test/test.js. Please see that code to learn how the API can be called.
 
 

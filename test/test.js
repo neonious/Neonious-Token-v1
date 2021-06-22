@@ -43,7 +43,7 @@ async function run() {
 	console.log("Gas cost ETH transfer:", await funcs.transfer(web3, INITIAL_ETH_ACCOUNT.privateKey, null, addressesAll[0].address, '1000000000000000', undefined, true));
 	console.log("Gas cost Token transfer:", await funcs.transfer(web3, INITIAL_ETH_ACCOUNT.privateKey, MSDIM_TESTTOKEN, addressesAll[0].address, '1000000000', undefined, true));
 
-	await funcs.transfer(web3, INITIAL_ETH_ACCOUNT.privateKey, null, addressesAll[0].address, '1000000000000000');
+	await funcs.transfer(web3, INITIAL_ETH_ACCOUNT.privateKey, null, addressesAll[0].address, '10000000000000000');
 	let tos = [addressesAll[0].address, addressesAll[0].address];
 	let amounts = ['1000000000', '100000000'];
 	await funcs.transferToManyMDSIM(web3, INITIAL_ETH_ACCOUNT.privateKey, MSDIM_TESTTOKEN, tos, amounts);

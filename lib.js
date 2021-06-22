@@ -223,6 +223,14 @@ exports.isNodeReady = async function isNodeReady(web3) {
 	return !await web3.eth.isSyncing();
 }
 
+exports.getPrivateKeyAddress = async function getPrivateKeyAddress(web3, privateKey) {
+	let account = accounts[privateKey];
+	if (!account)
+		account = accounts[privateKey] = await web3.eth.accounts.privateKeyToAccount(privateKey);
+
+	return account.address;
+}
+
 exports.createAddresses = async function createAddresses(web3, count) {
 	let addrs = [];
 	for (let i = 0; i < count; i++) {
@@ -396,7 +404,7 @@ exports.transferToManyMDSIM = async function transferToManyMDSIM(web3, privateKe
 }
 
 exports.approve = async function approve(web3, privateKey, tokenAddr, byAddress, limit, gasFactor, onlyEstimate) {
-	if (limit === undefined)
+	if (limit === undefined || limit === null)
 		limit = (new web3.utils.BN(2)).pow(new web3.utils.BN(256)).sub(new web3.utils.BN(1)).toString();
 
 	erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);

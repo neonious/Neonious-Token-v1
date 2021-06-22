@@ -21,7 +21,7 @@ async function run() {
 //	await swap.setupApproval(web3, PRIVATE_KEY, lib.TOKENS['USDT']);
 
 /*
-	await swap.transferWithSwap(web3, PRIVATE_KEY, null, 'ADDRESS',
+	await swap.transferWithSwap(web3, PRIVATE_KEY, null, null,
 		'100000000000000000',
 		lib.TOKENS['USDC'],
 		undefined,
