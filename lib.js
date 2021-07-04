@@ -289,7 +289,7 @@ exports.transferDelegated = async function transferDelegated(web3, privateKeyFee
 	const tokenName = await erc20Contracts[tokenAddr].methods.name().call();
 	const tokenVersion = await erc20Contracts[tokenAddr].methods.version().call();
 
-	if (subtractFeeTokenEthRate) {
+	if (subtractFeeTokenEthRate && !onlyEstimate) {
 		const data = {
 			types: {
 				EIP712Domain: [
@@ -333,13 +333,13 @@ exports.transferDelegated = async function transferDelegated(web3, privateKeyFee
 			erc20Contracts[tokenAddr].methods.transferWithAuthorization(accountFrom.address, to, amount, 0, data.message.validBefore, data.message.nonce, v, r, s), tokenAddr, undefined, undefined, true);
 		gas *= subtractFeeTokenEthRate;
 
-		return await exports.sendPrivateKey(web3, privateKeyFees, async (gasPrice) => {
+		await exports.sendPrivateKey(web3, privateKeyFees, async (gasPrice) => {
 			let tryAmount;
 			let subAmount = (new web3.utils.BN(gas)).mul(new web3.utils.BN(gasPrice));
 			tryAmount = (new web3.utils.BN(amount)).sub(subAmount).toString();
 			subReturn = subAmount.toString();
 			if (tryAmount == '0' || tryAmount[0] == '-')
-				return;
+				return amount;
 
 			const data = {
 				types: {
@@ -382,6 +382,7 @@ exports.transferDelegated = async function transferDelegated(web3, privateKeyFee
 
 			return [erc20Contracts[tokenAddr].methods.transferWithAuthorization(accountFrom.address, to, tryAmount, 0, data.message.validBefore, data.message.nonce, v, r, s), 0];
 		}, tokenAddr, undefined, gasFactor, onlyEstimate);
+		return subReturn;
 	} else {
 		const data = {
 			types: {
@@ -425,8 +426,6 @@ exports.transferDelegated = async function transferDelegated(web3, privateKeyFee
 		return await exports.sendPrivateKey(web3, privateKeyFees,
 			erc20Contracts[tokenAddr].methods.transferWithAuthorization(accountFrom.address, to, amount, 0, data.message.validBefore, data.message.nonce, v, r, s), tokenAddr, undefined, gasFactor, onlyEstimate);
 	}
-
-	return subReturn;
 }
 
 exports.transfer = async function transfer(web3, privateKey, tokenAddr, to, amount, subtractFees, gasFactor, onlyEstimate) {
