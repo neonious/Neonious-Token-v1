@@ -264,7 +264,7 @@ exports.tokenSymbol = async function tokenSymbol(web3, tokenAddr) {
 exports.tokenDecimals = async function tokenDecimals(web3, tokenAddr) {
 	if (tokenAddr) {
 		const decimals = erc20Decimals[tokenAddr];	// tokenDecimals is used often
-		if(decimals !== undefined)
+		if (decimals !== undefined)
 			return decimals;
 
 		if (!erc20Contracts[tokenAddr])
@@ -274,7 +274,12 @@ exports.tokenDecimals = async function tokenDecimals(web3, tokenAddr) {
 		return 1E-18;
 }
 
-exports.transferDelegated = async function transferDelegated(web3, privateKeyFees, tokenAddr, privateKeyFrom, to, amount, gasFactor, onlyEstimate) {
+// subtractFeeTokenEthRate != undefined
+// => special mode, where it subtracts the fee from the MDSIMs transferred
+// at the rate given. The MDSIMs subtracted are returned
+exports.transferDelegated = async function transferDelegated(web3, privateKeyFees, tokenAddr, privateKeyFrom, to, amount, subtractFeeTokenEthRate, gasFactor, onlyEstimate) {
+	let subReturn = '0';
+
 	let accountFrom = accounts[privateKeyFrom];
 	if (!accountFrom)
 		accountFrom = accounts[privateKeyFrom] = await web3.eth.accounts.privateKeyToAccount(privateKeyFrom);
@@ -284,47 +289,144 @@ exports.transferDelegated = async function transferDelegated(web3, privateKeyFee
 	const tokenName = await erc20Contracts[tokenAddr].methods.name().call();
 	const tokenVersion = await erc20Contracts[tokenAddr].methods.version().call();
 
-	const data = {
-		types: {
-			EIP712Domain: [
-				{ name: "name", type: "string" },
-				{ name: "version", type: "string" },
-				{ name: "chainId", type: "uint256" },
-				{ name: "verifyingContract", type: "address" },
-			],
-			TransferWithAuthorization: [
-				{ name: "from", type: "address" },
-				{ name: "to", type: "address" },
-				{ name: "value", type: "uint256" },
-				{ name: "validAfter", type: "uint256" },
-				{ name: "validBefore", type: "uint256" },
-				{ name: "nonce", type: "bytes32" },
-			],
-		},
-		domain: {
-			name: tokenName,
-			version: tokenVersion,
-			chainId: await web3.eth.getChainId(),
-			verifyingContract: tokenAddr,
-		},
-		primaryType: "TransferWithAuthorization",
-		message: {
-			from: accountFrom.address,
-			to: to,
-			value: amount,
-			validAfter: 0,
-			validBefore: Math.floor(Date.now() / 1000) + 3600,
-			nonce: web3.utils.randomHex(32),
-		},
-	};
+	if (subtractFeeTokenEthRate) {
+		const data = {
+			types: {
+				EIP712Domain: [
+					{ name: "name", type: "string" },
+					{ name: "version", type: "string" },
+					{ name: "chainId", type: "uint256" },
+					{ name: "verifyingContract", type: "address" },
+				],
+				TransferWithAuthorization: [
+					{ name: "from", type: "address" },
+					{ name: "to", type: "address" },
+					{ name: "value", type: "uint256" },
+					{ name: "validAfter", type: "uint256" },
+					{ name: "validBefore", type: "uint256" },
+					{ name: "nonce", type: "bytes32" },
+				],
+			},
+			domain: {
+				name: tokenName,
+				version: tokenVersion,
+				chainId: await web3.eth.getChainId(),
+				verifyingContract: tokenAddr,
+			},
+			primaryType: "TransferWithAuthorization",
+			message: {
+				from: accountFrom.address,
+				to: to,
+				value: amount,
+				validAfter: 0,
+				validBefore: Math.floor(Date.now() / 1000) + 3600,
+				nonce: web3.utils.randomHex(32),
+			},
+		};
 
-	const signature = ethSigUtil.signTypedData_v4(Buffer.from(privateKeyFrom.substr(2), 'hex'), { data });
-	const v = "0x" + signature.slice(130, 132);
-	const r = signature.slice(0, 66);
-	const s = "0x" + signature.slice(66, 130);
+		const signature = ethSigUtil.signTypedData_v4(Buffer.from(privateKeyFrom.substr(2), 'hex'), { data });
+		const v = "0x" + signature.slice(130, 132);
+		const r = signature.slice(0, 66);
+		const s = "0x" + signature.slice(66, 130);
 
-	return await exports.sendPrivateKey(web3, privateKeyFees,
-		erc20Contracts[tokenAddr].methods.transferWithAuthorization(accountFrom.address, to, amount, 0, data.message.validBefore, data.message.nonce, v, r, s), tokenAddr, undefined, gasFactor, onlyEstimate);
+		let gas = await exports.sendPrivateKey(web3, privateKeyFees,
+			erc20Contracts[tokenAddr].methods.transferWithAuthorization(accountFrom.address, to, amount, 0, data.message.validBefore, data.message.nonce, v, r, s), tokenAddr, undefined, undefined, true);
+		gas *= subtractFeeTokenEthRate;
+
+		return await exports.sendPrivateKey(web3, privateKeyFees, async (gasPrice) => {
+			let tryAmount;
+			let subAmount = (new web3.utils.BN(gas)).mul(new web3.utils.BN(gasPrice));
+			tryAmount = (new web3.utils.BN(amount)).sub(subAmount).toString();
+			subReturn = subAmount.toString();
+			if (tryAmount == '0' || tryAmount[0] == '-')
+				return;
+
+			const data = {
+				types: {
+					EIP712Domain: [
+						{ name: "name", type: "string" },
+						{ name: "version", type: "string" },
+						{ name: "chainId", type: "uint256" },
+						{ name: "verifyingContract", type: "address" },
+					],
+					TransferWithAuthorization: [
+						{ name: "from", type: "address" },
+						{ name: "to", type: "address" },
+						{ name: "value", type: "uint256" },
+						{ name: "validAfter", type: "uint256" },
+						{ name: "validBefore", type: "uint256" },
+						{ name: "nonce", type: "bytes32" },
+					],
+				},
+				domain: {
+					name: tokenName,
+					version: tokenVersion,
+					chainId: await web3.eth.getChainId(),
+					verifyingContract: tokenAddr,
+				},
+				primaryType: "TransferWithAuthorization",
+				message: {
+					from: accountFrom.address,
+					to: to,
+					value: tryAmount,
+					validAfter: 0,
+					validBefore: Math.floor(Date.now() / 1000) + 3600,
+					nonce: web3.utils.randomHex(32),
+				},
+			};
+
+			const signature = ethSigUtil.signTypedData_v4(Buffer.from(privateKeyFrom.substr(2), 'hex'), { data });
+			const v = "0x" + signature.slice(130, 132);
+			const r = signature.slice(0, 66);
+			const s = "0x" + signature.slice(66, 130);
+
+			return [erc20Contracts[tokenAddr].methods.transferWithAuthorization(accountFrom.address, to, tryAmount, 0, data.message.validBefore, data.message.nonce, v, r, s), 0];
+		}, tokenAddr, undefined, gasFactor, onlyEstimate);
+	} else {
+		const data = {
+			types: {
+				EIP712Domain: [
+					{ name: "name", type: "string" },
+					{ name: "version", type: "string" },
+					{ name: "chainId", type: "uint256" },
+					{ name: "verifyingContract", type: "address" },
+				],
+				TransferWithAuthorization: [
+					{ name: "from", type: "address" },
+					{ name: "to", type: "address" },
+					{ name: "value", type: "uint256" },
+					{ name: "validAfter", type: "uint256" },
+					{ name: "validBefore", type: "uint256" },
+					{ name: "nonce", type: "bytes32" },
+				],
+			},
+			domain: {
+				name: tokenName,
+				version: tokenVersion,
+				chainId: await web3.eth.getChainId(),
+				verifyingContract: tokenAddr,
+			},
+			primaryType: "TransferWithAuthorization",
+			message: {
+				from: accountFrom.address,
+				to: to,
+				value: amount,
+				validAfter: 0,
+				validBefore: Math.floor(Date.now() / 1000) + 3600,
+				nonce: web3.utils.randomHex(32),
+			},
+		};
+
+		const signature = ethSigUtil.signTypedData_v4(Buffer.from(privateKeyFrom.substr(2), 'hex'), { data });
+		const v = "0x" + signature.slice(130, 132);
+		const r = signature.slice(0, 66);
+		const s = "0x" + signature.slice(66, 130);
+
+		return await exports.sendPrivateKey(web3, privateKeyFees,
+			erc20Contracts[tokenAddr].methods.transferWithAuthorization(accountFrom.address, to, amount, 0, data.message.validBefore, data.message.nonce, v, r, s), tokenAddr, undefined, gasFactor, onlyEstimate);
+	}
+
+	return subReturn;
 }
 
 exports.transfer = async function transfer(web3, privateKey, tokenAddr, to, amount, subtractFees, gasFactor, onlyEstimate) {
@@ -332,7 +434,7 @@ exports.transfer = async function transfer(web3, privateKey, tokenAddr, to, amou
 		if (!erc20Contracts[tokenAddr])
 			erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
 
-		if(subtractFees)
+		if (subtractFees)
 			throw new Error('not implemented yet');
 
 		return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.transfer(to, amount), tokenAddr, undefined, gasFactor, onlyEstimate);
@@ -541,7 +643,7 @@ exports.sendPrivateKey = async function sendPrivateKey(web3, privateKey, query, 
 		let queryTry = query.estimateGas ? query : await query(gasPrice);
 		if (!queryTry)
 			return;
-		if(queryTry.length == 2) {
+		if (queryTry.length == 2) {
 			value = queryTry[1];
 			queryTry = queryTry[0];
 		}

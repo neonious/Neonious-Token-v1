@@ -64,7 +64,7 @@ async function run() {
 	console.log("Token balances:", await funcs.getBalance(web3, MSDIM_TESTTOKEN, addresses));
 
 	console.log("Transfer 100 of Token from third to fourth, delegated by first");
-	console.log("Gas cost delegated transfer:", await funcs.transferDelegated(web3, addressesAll[0].privateKey, MSDIM_TESTTOKEN, addressesAll[2].privateKey, addressesAll[3].address, 100, undefined, true));
+	console.log("Gas cost delegated transfer:", await funcs.transferDelegated(web3, addressesAll[0].privateKey, MSDIM_TESTTOKEN, addressesAll[2].privateKey, addressesAll[3].address, 100, undefined, undefined, true));
 	await funcs.transferDelegated(web3, addressesAll[0].privateKey, MSDIM_TESTTOKEN, addressesAll[2].privateKey, addressesAll[3].address, 100);
 
 	console.log("ETH balances:", await funcs.getBalance(web3, null, addresses));
