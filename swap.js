@@ -297,13 +297,13 @@ exports.getPrice = async function getPrice(web3, tokenA, tokenB, uniFee) {
   const tokenADecimals = await lib.tokenDecimals(web3, tokenA);
   const tokenBDecimals = await lib.tokenDecimals(web3, tokenB);
   let inV = '1';
-  for (let i = 0; i < tokenADecimals; i++)
+  for (let i = 0; i < tokenADecimals - 2; i++)
     inV += '0';
 
   // Pool.sqrtPriceX96 is not updated constantly. This is better.
-  return (0.5 * await exports.getSellPrice(web3, inV, tokenA, tokenB, uniFee)
-    + 0.5 * await exports.getBuyPrice(web3, inV, tokenA, tokenB, uniFee))
-    / Math.pow(10, tokenBDecimals);
+  return (0.5 * (await exports.getSellPrice(web3, inV, tokenA, tokenB, uniFee)) / (1 - uniFee * 0.000001)
+    + 0.5 * (await exports.getBuyPrice(web3, inV, tokenA, tokenB, uniFee)) * (1 - uniFee * 0.000001))
+    / Math.pow(10, tokenBDecimals - 2);
 }
 
 exports.getETHPrice = async function getETHPrice(web3) {
