@@ -428,15 +428,28 @@ exports.transferDelegated = async function transferDelegated(web3, privateKeyFee
 	}
 }
 
-exports.transfer = async function transfer(web3, privateKey, tokenAddr, to, amount, subtractFees, gasFactor, onlyEstimate) {
+exports.transfer = async function transfer(web3, privateKey, tokenAddr, to, amount, subtractFeeTokenEthRate, gasFactor, onlyEstimate) {
 	if (tokenAddr) {
 		if (!erc20Contracts[tokenAddr])
 			erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
 
-		if (subtractFees)
-			throw new Error('not implemented yet');
+		if (subtractFeeTokenEthRate) {
+			let gas = await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.transfer(to, amount), tokenAddr, undefined, undefined, true);
+			if (onlyEstimate)
+				return gas;
+			gas *= subtractFeeTokenEthRate;
 
-		return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.transfer(to, amount), tokenAddr, undefined, gasFactor, onlyEstimate);
+			return await exports.sendPrivateKey(web3, privateKey, async (gasPrice) => {
+				let tryAmount;
+				let subAmount = (new web3.utils.BN(gas)).mul(new web3.utils.BN(gasPrice));
+				tryAmount = (new web3.utils.BN(amount)).sub(subAmount).toString();
+				if (tryAmount == '0' || tryAmount[0] == '-')
+					return;
+
+				return erc20Contracts[tokenAddr].methods.transfer(to, tryAmount);
+			}, tokenAddr, undefined, gasFactor);
+		} else
+			return await exports.sendPrivateKey(web3, privateKey, erc20Contracts[tokenAddr].methods.transfer(to, amount), tokenAddr, undefined, gasFactor, onlyEstimate);
 	} else {
 		if (onlyEstimate)
 			return 21000;
@@ -468,7 +481,7 @@ exports.transfer = async function transfer(web3, privateKey, tokenAddr, to, amou
 			}
 
 			let tryAmount;
-			if (subtractFees) {
+			if (subtractFeeTokenEthRate) {
 				tryAmount = (new web3.utils.BN(amount)).sub((new web3.utils.BN(21000)).mul(new web3.utils.BN(gasPrice))).toString();
 				if (tryAmount == '0' || tryAmount[0] == '-')
 					return;			// nothing to transfer

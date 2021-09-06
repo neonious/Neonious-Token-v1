@@ -350,7 +350,7 @@ exports.transferWithSwap = async function transferWithSwap(web3, privateKey, tok
     ), SWAPROUTER_ADDRESS, directETH ? amount : 0, undefined, true);
 
   return await lib.sendPrivateKey(web3, privateKey, async (gasPrice) => {
-    let tryAmount, tryAmountWithUni;
+    let tryAmount;
     if (subtractFees)
       tryAmount = (new web3.utils.BN(amount)).sub((new web3.utils.BN(gas)).mul(new web3.utils.BN(gasPrice))).toString();
     else
