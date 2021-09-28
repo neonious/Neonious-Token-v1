@@ -2,9 +2,6 @@
 
 const lib = require('./lib');
 
-const univ3 = require('@uniswap/v3-sdk');
-const uni = require('@uniswap/sdk');
-
 const QUOTER_ADDRESS = '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6';
 const SWAPROUTER_ADDRESS = '0xE592427A0AEce92De3Edee1F18E0157C05861564';
 
@@ -211,50 +208,6 @@ const SWAPROUTER_ABI = [
     "stateMutability": "payable",
     "type": "function"
   }
-];
-const POOL_ABI = [{
-  "inputs": [],
-  "name": "slot0",
-  "outputs": [
-    {
-      "internalType": "uint160",
-      "name": "sqrtPriceX96",
-      "type": "uint160"
-    },
-    {
-      "internalType": "int24",
-      "name": "tick",
-      "type": "int24"
-    },
-    {
-      "internalType": "uint16",
-      "name": "observationIndex",
-      "type": "uint16"
-    },
-    {
-      "internalType": "uint16",
-      "name": "observationCardinality",
-      "type": "uint16"
-    },
-    {
-      "internalType": "uint16",
-      "name": "observationCardinalityNext",
-      "type": "uint16"
-    },
-    {
-      "internalType": "uint8",
-      "name": "feeProtocol",
-      "type": "uint8"
-    },
-    {
-      "internalType": "bool",
-      "name": "unlocked",
-      "type": "bool"
-    }
-  ],
-  "stateMutability": "view",
-  "type": "function"
-}
 ];
 
 let poolContracts = {};

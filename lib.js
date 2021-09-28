@@ -218,6 +218,13 @@ exports.TOKENS = {
 	'USDC': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
 	'USDT': '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 };
+exports.TOKENS_POLYGON = {
+	'WETH': '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619',
+	'MDSIM': '0xE454034b75Bb9D017f21228e61b9Ddbc889623C0',
+	'DAI': '0x8f3cf7ad23cd3cadbd9735aff958023239c6a063',
+	'USDC': '0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
+	'USDT': '0xc2132d05d31c914a87c6611c10748aeb04b58e8f'
+};
 
 exports.isNodeReady = async function isNodeReady(web3) {
 	return !await web3.eth.isSyncing();
