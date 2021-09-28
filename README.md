@@ -31,9 +31,11 @@ Also includes full unit test for transfer functions at test/test.js. Please see 
 The token is deployed at
 
 Ethereum: 0xDa48C42517AFfB3BF3FC13CE26561092e1a61A80
+
 Polygon:  0xE454034b75Bb9D017f21228e61b9Ddbc889623C0
 
 View in Etherscan:   https://etherscan.io/token/0xDa48C42517AFfB3BF3FC13CE26561092e1a61A80
+
 View in Polygonscan: https://polygonscan.com/token/0xE454034b75Bb9D017f21228e61b9Ddbc889623C0
 
 ## Gas Costs (Ethereum)
