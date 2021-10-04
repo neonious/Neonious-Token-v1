@@ -596,7 +596,7 @@ exports.getHistory = async function getHistory(web3, tokenAddr, addresses, fromB
 
 		// To be safe, we do block to block, because otherwise the JSON gets too big for Web3
 		for (let b = fromBlock | 0; b < res.nextBlock; b += count) {
-			const raw = await erc20Contracts[tokenAddr].getPastEvents("Transfer", { fromBlock: b, toBlock: b + count - 1 });
+			const raw = await erc20Contracts[tokenAddr].getPastEvents("Transfer", { fromBlock: b, toBlock: lastBlock && lastBlock < b + count - 1 ? lastBlock : b + count - 1 });
 			for (let i = 0; i < raw.length; i++)
 				if (raw[i].address == tokenAddr && (allAddresses || addressObj[raw[i].returnValues[0]] || addressObj[raw[i].returnValues[1]]))
 					res.transfers.push({
