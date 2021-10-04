@@ -570,7 +570,7 @@ exports.getBalance = async function getBalance(web3, tokenAddr, addresses, human
 	return only1 ? balances[0] : balances;
 }
 
-exports.getHistory = async function getHistory(web3, tokenAddr, addresses, fromBlock, human) {
+exports.getHistory = async function getHistory(web3, tokenAddr, addresses, fromBlock, human, lastBlock) {
 	let fac = human ? await exports.getDecimalFactor(web3, tokenAddr) : 1;
 	let res = {
 		nextBlock: await web3.eth.getBlockNumber() + 1,
@@ -589,12 +589,14 @@ exports.getHistory = async function getHistory(web3, tokenAddr, addresses, fromB
 		allAddresses = true;
 
 	if (tokenAddr) {
+		const count = tokenAddr == exports.TOKENS['MDSIM'] || tokenAddr == exports.TOKENS_POLYGON['MDSIM'] ? 100 : 2;
+
 		if (!erc20Contracts[tokenAddr])
 			erc20Contracts[tokenAddr] = new web3.eth.Contract(ERC20_ABI, tokenAddr);
 
 		// To be safe, we do block to block, because otherwise the JSON gets too big for Web3
-		for (let b = fromBlock | 0; b < res.nextBlock; b++) {
-			const raw = await erc20Contracts[tokenAddr].getPastEvents("Transfer", { fromBlock: b, toBlock: b });
+		for (let b = fromBlock | 0; b < res.nextBlock; b += count) {
+			const raw = await erc20Contracts[tokenAddr].getPastEvents("Transfer", { fromBlock: b, toBlock: b + count - 1 });
 			for (let i = 0; i < raw.length; i++)
 				if (raw[i].address == tokenAddr && (allAddresses || addressObj[raw[i].returnValues[0]] || addressObj[raw[i].returnValues[1]]))
 					res.transfers.push({
