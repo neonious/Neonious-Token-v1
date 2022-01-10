@@ -196,9 +196,9 @@ let routerContract, factoryContract;
 
 exports.getBuyPrice = async function getBuyPrice(web3, buyTokenA, tokenA, tokenB) {
   if (!tokenA)
-    tokenA = lib.TOKENS['WETH'];
+    tokenA = lib.TOKENS_POLYGON['WMATIC'];
   if (!tokenB)
-    tokenB = lib.TOKENS['WETH'];
+    tokenB = lib.TOKENS_POLYGON['WMATIC'];
 
   if (!factoryContract)
     factoryContract = new web3.eth.Contract(FACTORY_ABI, FACTORY_ADDRESS);
@@ -213,9 +213,9 @@ exports.getBuyPrice = async function getBuyPrice(web3, buyTokenA, tokenA, tokenB
 
 exports.getSellPrice = async function getSellPrice(web3, sellTokenA, tokenA, tokenB) {
   if (!tokenA)
-    tokenA = lib.TOKENS['WETH'];
+    tokenA = lib.TOKENS_POLYGON['WMATIC'];
   if (!tokenB)
-    tokenB = lib.TOKENS['WETH'];
+    tokenB = lib.TOKENS_POLYGON['WMATIC'];
 
   if (!factoryContract)
     factoryContract = new web3.eth.Contract(FACTORY_ABI, FACTORY_ADDRESS);
@@ -230,9 +230,9 @@ exports.getSellPrice = async function getSellPrice(web3, sellTokenA, tokenA, tok
 
 exports.getPrice = async function getPrice(web3, tokenA, tokenB) {
   if (!tokenA)
-    tokenA = lib.TOKENS_POLYGON['WETH'];
+    tokenA = lib.TOKENS_POLYGON['WMATIC'];
   if (!tokenB)
-    tokenB = lib.TOKENS_POLYGON['WETH'];
+    tokenB = lib.TOKENS_POLYGON['WMATIC'];
 
   const tokenADecimals = await lib.tokenDecimals(web3, tokenA);
   const tokenBDecimals = await lib.tokenDecimals(web3, tokenB);
@@ -248,9 +248,9 @@ exports.getPrice = async function getPrice(web3, tokenA, tokenB) {
 
 exports.getPriceRaw = async function getPriceRaw(web3, amountTokenA, tokenA, tokenB) {
   if (!tokenA)
-    tokenA = lib.TOKENS_POLYGON['WETH'];
+    tokenA = lib.TOKENS_POLYGON['WMATIC'];
   if (!tokenB)
-    tokenB = lib.TOKENS_POLYGON['WETH'];
+    tokenB = lib.TOKENS_POLYGON['WMATIC'];
 
   const tokenADecimals = await lib.tokenDecimals(web3, tokenA);
   const tokenBDecimals = await lib.tokenDecimals(web3, tokenB);
@@ -259,7 +259,7 @@ exports.getPriceRaw = async function getPriceRaw(web3, amountTokenA, tokenA, tok
   return (new web3.utils.BN(await exports.getSellPrice(web3, amountTokenA, tokenA, tokenB))).mul(new web3.utils.BN(500)).div(new web3.utils.BN(997)).add((new web3.utils.BN(await exports.getBuyPrice(web3, amountTokenA, tokenA, tokenB))).mul(new web3.utils.BN(997)).div(new web3.utils.BN(2000))).toString();
 }
 
-exports.getETHPrice = async function getETHPrice(web3) {
+exports.getMATICPrice = async function getETHPrice(web3) {
   let prices = await Promise.all([
     exports.getPrice(web3, null, lib.TOKENS_POLYGON['USDC']),
     exports.getPrice(web3, null, lib.TOKENS_POLYGON['USDT']),
@@ -280,9 +280,9 @@ exports.setupApproval = async function setupApproval(web3, privateKey, tokenAddr
 exports.addLiquidity = async function(web3, privateKey, tokenA, amountTokenA, tokenB) {
   const to = await lib.getPrivateKeyAddress(web3, privateKey);
   if (!tokenA)
-    tokenA = lib.TOKENS_POLYGON['WETH'];
+    tokenA = lib.TOKENS_POLYGON['WMATIC'];
   if (!tokenB)
-    tokenB = lib.TOKENS_POLYGON['WETH'];
+    tokenB = lib.TOKENS_POLYGON['WMATIC'];
 
   if (!routerContract)
     routerContract = new web3.eth.Contract(ROUTER_ABI, ROUTER_ADDRESS);
@@ -302,9 +302,9 @@ exports.addLiquidity = async function(web3, privateKey, tokenA, amountTokenA, to
 
 exports.removeLiquidity = async function(web3, privateKey, tokenA, amountTokenA, tokenB) {
   if (!tokenA)
-    tokenA = lib.TOKENS_POLYGON['WETH'];
+    tokenA = lib.TOKENS_POLYGON['WMATIC'];
   if (!tokenB)
-    tokenB = lib.TOKENS_POLYGON['WETH'];
+    tokenB = lib.TOKENS_POLYGON['WMATIC'];
 
   if (!routerContract)
     routerContract = new web3.eth.Contract(ROUTER_ABI, ROUTER_ADDRESS);
@@ -314,9 +314,9 @@ exports.removeLiquidity = async function(web3, privateKey, tokenA, amountTokenA,
 exports.swap = async function(web3, privateKey, tokenIn, amountTokenIn, tokenOut) {
   const to = await lib.getPrivateKeyAddress(web3, privateKey);
   if (!tokenIn)
-    tokenIn = lib.TOKENS_POLYGON['WETH'];
+    tokenIn = lib.TOKENS_POLYGON['WMATIC'];
   if (!tokenOut)
-    tokenOut = lib.TOKENS_POLYGON['WETH'];
+    tokenOut = lib.TOKENS_POLYGON['WMATIC'];
 
   if (!routerContract)
     routerContract = new web3.eth.Contract(ROUTER_ABI, ROUTER_ADDRESS);
